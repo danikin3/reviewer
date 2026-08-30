@@ -75,7 +75,12 @@ jobs:
 
       - name: APK bauen
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon --console=plain --stacktrace
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon --console=plain --info 2>&1 \
+            | grep -viE "^\s*(Resolving|Caching|Skipping|Up-to-date|Watching|file event|Putting|Stored|Loaded|Unpacking|Invalidating)" \
+            | tail -400
 
       - name: Signatur prüfen
         # Faellt die Signierung still auf den Debug-Key zurueck, soll der Build
