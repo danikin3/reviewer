@@ -68,9 +68,14 @@ jobs:
             echo "REVIEWER_UPLOAD_KEY_PASSWORD=$STORE_PASSWORD"
           } >> android/gradle.properties
 
+      - name: JS-Bundle erzeugen
+        # Getrennt vom Gradle-Build, weil Gradle die Fehlerausgabe von Metro
+        # verschluckt und nur "command 'node' finished with exit value 1" meldet.
+        run: npx expo export --platform android --output-dir "$RUNNER_TEMP/expo-export"
+
       - name: APK bauen
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --console=plain --stacktrace
 
       - name: Signatur prüfen
         # Faellt die Signierung still auf den Debug-Key zurueck, soll der Build
