@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
@@ -96,7 +97,20 @@ export default function ProfileScreen() {
           }));
 
   return (
-    <Screen title="Profil">
+    <Screen
+      title="Profil"
+      headerAction={
+        <Link href="/settings" asChild>
+          <Pressable
+            style={styles.settingsButton}
+            accessibilityRole="link"
+            accessibilityLabel="Einstellungen öffnen"
+          >
+            <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+          </Pressable>
+        </Link>
+      }
+    >
       {state.kind === 'loading' && (
         <View style={styles.center}>
           <ActivityIndicator color={colors.accent} />
@@ -273,5 +287,12 @@ const styles = StyleSheet.create({
   },
   gridRating: {
     marginTop: spacing.xs,
+  },
+  settingsButton: {
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexDirection: 'row',
   },
 });

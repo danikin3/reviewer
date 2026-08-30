@@ -36,7 +36,7 @@ Aus `entries` berechnet: gesehene Filme/Serien/Episoden, Sehdauer (Std/Tage), Ra
 Trending (`/trending/all/week`). Regelbasiertes Scoring (Kandidaten aus `/recommendations` der Top-20 eigenen Titel, Genre-/Keyword-Match, Gewichtung nach Rating, Abzug für Gesehenes/Watchlist) mit Unit-Tests und Begründung pro Vorschlag. Watch-Provider (Abo/Leihen/Kaufen, Region DE, in Settings umstellbar) hinter `StreamingProvider`-Interface, Link auf TMDB-Watch-Seite, JustWatch-Attribution.
 **Test:** Scoring-Tests grün; keine gesehenen Titel in Vorschlägen.
 
-### 9. Import, Export, Settings
+### 9. Import, Export, Settings ✅
 Letterboxd-CSV-Import. Datenexport als JSON/CSV (Share-Sheet). „Alle Daten löschen". Settings: Region, Theme, TMDB-/JustWatch-Attribution, Version.
 **Test:** Echten Letterboxd-Export importieren; Export enthält alle Einträge; Löschen leert die DB.
 

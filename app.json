@@ -34,7 +34,8 @@
       ],
       "expo-font",
       "expo-sqlite",
-      "./plugins/with-release-signing.js"
+      "./plugins/with-release-signing.js",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,
