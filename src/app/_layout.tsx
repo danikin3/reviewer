@@ -62,6 +62,10 @@ export default function RootLayout() {
             >
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="title/[type]/[id]" options={{ animation: 'slide_from_right' }} />
+              <Stack.Screen
+                name="rate/[type]/[id]"
+                options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+              />
             </Stack>
           </SQLiteProvider>
         </Suspense>

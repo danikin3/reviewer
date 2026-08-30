@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Link, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -131,6 +131,23 @@ function DetailContent({ details, topInset }: { details: MediaDetails; topInset:
       </View>
 
       <View style={styles.body}>
+        <Link
+          href={{
+            pathname: '/rate/[type]/[id]',
+            params: { type: details.mediaType, id: details.tmdbId },
+          }}
+          asChild
+        >
+          <Pressable
+            style={styles.rateButton}
+            accessibilityRole="button"
+            accessibilityLabel={`${details.title} bewerten`}
+          >
+            <Ionicons name="star" size={16} color={colors.onAccent} />
+            <Text style={styles.rateText}>Bewerten</Text>
+          </Pressable>
+        </Link>
+
         {details.genres.length > 0 && (
           <View style={styles.chips}>
             {details.genres.map((genre) => (
@@ -158,7 +175,7 @@ function DetailContent({ details, topInset }: { details: MediaDetails; topInset:
             accessibilityRole="button"
             accessibilityLabel="Trailer auf YouTube ansehen"
           >
-            <Ionicons name="play" size={16} color={colors.onAccent} />
+            <Ionicons name="play" size={16} color={colors.text} />
             <Text style={styles.trailerText}>Trailer ansehen</Text>
           </Pressable>
         )}
@@ -291,7 +308,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
   },
-  trailerButton: {
+  rateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -300,9 +317,23 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     height: touchTarget,
   },
-  trailerText: {
+  rateText: {
     ...typography.bodyMedium,
     color: colors.onAccent,
+  },
+  trailerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    height: touchTarget,
+  },
+  trailerText: {
+    ...typography.bodyMedium,
+    color: colors.text,
   },
   section: {
     gap: spacing.md,

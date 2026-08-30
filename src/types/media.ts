@@ -32,6 +32,17 @@ export interface Entry {
 
 export type NewEntry = Omit<Entry, 'id' | 'createdAt' | 'updatedAt'>;
 
+/**
+ * Eintrag samt der gecachten Titel-Metadaten — was Tagebuch und Poster-Grid
+ * brauchen, ohne dafür TMDB anzufragen.
+ */
+export interface EntryWithMedia {
+  entry: Entry;
+  title: string;
+  posterPath: string | null;
+  year: number | null;
+}
+
 export interface WatchlistItem {
   mediaType: MediaType;
   tmdbId: number;

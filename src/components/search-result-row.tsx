@@ -6,11 +6,17 @@ import { Poster } from '@/components/poster';
 import { colors, radius, spacing, touchTarget, typography } from '@/theme/theme';
 import type { SearchHit } from '@/types/media';
 
-export function SearchResultRow({ hit }: { hit: SearchHit }) {
+type SearchResultRowProps = {
+  hit: SearchHit;
+  /** Wohin der Treffer führt: zur Detailseite oder direkt ins Bewerten. */
+  target?: 'detail' | 'rate';
+};
+
+export function SearchResultRow({ hit, target = 'detail' }: SearchResultRowProps) {
   return (
     <Link
       href={{
-        pathname: '/title/[type]/[id]',
+        pathname: target === 'rate' ? '/rate/[type]/[id]' : '/title/[type]/[id]',
         params: { type: hit.mediaType, id: hit.tmdbId },
       }}
       asChild

@@ -1,13 +1,13 @@
-import { EmptyState } from '@/components/empty-state';
+import { MediaSearch } from '@/components/media-search';
 import { Screen } from '@/components/screen';
 
 export default function AddScreen() {
   return (
     <Screen title="Bewerten">
-      <EmptyState
-        icon="star-outline"
-        title="Titel suchen und bewerten"
-        hint="Hier entsteht das Bewertungs-Sheet: Titel suchen, Sterne vergeben, Review schreiben."
+      <MediaSearch
+        target="rate"
+        idleTitle="Was hast du gesehen?"
+        idleHint="Such den Film oder die Serie — beim Antippen geht es direkt zur Bewertung."
       />
     </Screen>
   );
