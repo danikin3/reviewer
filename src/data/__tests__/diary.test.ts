@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { listDiary, listRatedTitles, saveRating, type RatingInput } from '@/data/diary';
+import {
+  addToWatchlistWithMedia,
+  listDiary,
+  listRatedTitles,
+  listWatchlistWithMedia,
+  saveRating,
+  type RatingInput,
+} from '@/data/diary';
 import { getCachedMedia } from '@/data/media-cache';
 import { migrateDb } from '@/data/migrations';
 import type { MediaDetails, Rating } from '@/types/media';
@@ -132,5 +139,43 @@ describe('listRatedTitles', () => {
 
     const grid = await listRatedTitles(db, { limit: 50 });
     expect(grid[0].title).toBe('Zweiter');
+  });
+});
+
+describe('Watchlist mit Metadaten', () => {
+  let db: NodeDbAdapter;
+
+  beforeEach(async () => {
+    db = new NodeDbAdapter();
+    await migrateDb(db);
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  it('cacht die Metadaten beim Setzen auf die Watchlist', async () => {
+    await addToWatchlistWithMedia(db, details({ mediaType: 'tv', tmdbId: 1396, title: 'Breaking Bad' }));
+
+    const list = await listWatchlistWithMedia(db);
+    expect(list).toHaveLength(1);
+    expect(list[0].title).toBe('Breaking Bad');
+    expect(list[0].posterPath).toBe('/m.jpg');
+    expect(list[0].mediaType).toBe('tv');
+  });
+
+  it('bleibt beim doppelten Hinzufügen bei einem Eintrag', async () => {
+    await addToWatchlistWithMedia(db, details());
+    await addToWatchlistWithMedia(db, details());
+    expect(await listWatchlistWithMedia(db)).toHaveLength(1);
+  });
+
+  it('mischt Filme und Serien in einer Liste', async () => {
+    await addToWatchlistWithMedia(db, details());
+    await addToWatchlistWithMedia(db, details({ mediaType: 'tv', tmdbId: 1396, title: 'Breaking Bad' }));
+
+    const list = await listWatchlistWithMedia(db);
+    expect(list).toHaveLength(2);
+    expect(new Set(list.map((item) => item.mediaType))).toEqual(new Set(['movie', 'tv']));
   });
 });

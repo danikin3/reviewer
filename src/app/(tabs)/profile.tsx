@@ -14,30 +14,55 @@ import { EmptyState } from '@/components/empty-state';
 import { Poster } from '@/components/poster';
 import { Screen } from '@/components/screen';
 import { StarDisplay } from '@/components/star-display';
-import { listRatedTitles } from '@/data/diary';
+import { listRatedTitles, listWatchlistWithMedia } from '@/data/diary';
 import { useDb } from '@/data/use-db';
-import { colors, spacing, typography } from '@/theme/theme';
-import type { EntryWithMedia } from '@/types/media';
+import { colors, radius, spacing, touchTarget, typography } from '@/theme/theme';
+import type { EntryWithMedia, MediaType, Rating } from '@/types/media';
 
 const COLUMNS = 3;
 const GRID_LIMIT = 60;
 
+type Tab = 'rated' | 'watchlist';
+
+/** Gemeinsame Form für beide Raster — bewertete Titel und Watchlist. */
+interface GridItem {
+  key: string;
+  mediaType: MediaType;
+  tmdbId: number;
+  title: string;
+  posterPath: string | null;
+  rating: Rating | null;
+}
+
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; items: EntryWithMedia[] };
+  | { kind: 'ready'; rated: EntryWithMedia[]; watchlist: GridItem[] };
 
 export default function ProfileScreen() {
   const db = useDb();
   const { width } = useWindowDimensions();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  const [tab, setTab] = useState<Tab>('rated');
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      listRatedTitles(db, { limit: GRID_LIMIT })
-        .then((items) => {
-          if (!cancelled) setState({ kind: 'ready', items });
+      Promise.all([listRatedTitles(db, { limit: GRID_LIMIT }), listWatchlistWithMedia(db)])
+        .then(([rated, watchlistRows]) => {
+          if (cancelled) return;
+          setState({
+            kind: 'ready',
+            rated,
+            watchlist: watchlistRows.map((row) => ({
+              key: `${row.mediaType}-${row.tmdbId}`,
+              mediaType: row.mediaType,
+              tmdbId: row.tmdbId,
+              title: row.title,
+              posterPath: row.posterPath,
+              rating: null,
+            })),
+          });
         })
         .catch((error: unknown) => {
           if (!cancelled) {
@@ -54,18 +79,21 @@ export default function ProfileScreen() {
   );
 
   // Screen-Padding links/rechts plus die Lücken zwischen den Spalten
-  const posterWidth = Math.floor(
-    (width - spacing.lg * 2 - spacing.sm * (COLUMNS - 1)) / COLUMNS
-  );
+  const posterWidth = Math.floor((width - spacing.lg * 2 - spacing.sm * (COLUMNS - 1)) / COLUMNS);
 
-  const movieCount =
-    state.kind === 'ready'
-      ? state.items.filter((item) => item.entry.mediaType === 'movie').length
-      : 0;
-  const tvCount =
-    state.kind === 'ready'
-      ? state.items.filter((item) => item.entry.mediaType === 'tv').length
-      : 0;
+  const items: GridItem[] =
+    state.kind !== 'ready'
+      ? []
+      : tab === 'watchlist'
+        ? state.watchlist
+        : state.rated.map((item) => ({
+            key: String(item.entry.id),
+            mediaType: item.entry.mediaType,
+            tmdbId: item.entry.tmdbId,
+            title: item.title,
+            posterPath: item.posterPath,
+            rating: item.entry.rating,
+          }));
 
   return (
     <Screen title="Profil">
@@ -82,43 +110,66 @@ export default function ProfileScreen() {
       {state.kind === 'ready' && (
         <>
           <View style={styles.stats}>
-            <Stat label="Filme" value={movieCount} />
-            <Stat label="Serien" value={tvCount} />
-            <Stat label="Bewertungen" value={state.items.length} />
+            <Stat
+              label="Filme"
+              value={state.rated.filter((item) => item.entry.mediaType === 'movie').length}
+            />
+            <Stat
+              label="Serien"
+              value={state.rated.filter((item) => item.entry.mediaType === 'tv').length}
+            />
+            <Stat label="Watchlist" value={state.watchlist.length} />
           </View>
 
-          {state.items.length === 0 ? (
+          <View style={styles.tabs}>
+            <TabButton
+              label="Bewertet"
+              active={tab === 'rated'}
+              onPress={() => setTab('rated')}
+            />
+            <TabButton
+              label="Watchlist"
+              active={tab === 'watchlist'}
+              onPress={() => setTab('watchlist')}
+            />
+          </View>
+
+          {items.length === 0 ? (
             <EmptyState
-              icon="grid-outline"
-              title="Noch nichts bewertet"
-              hint="Deine bewerteten Filme und Serien erscheinen hier als Poster-Raster."
+              icon={tab === 'watchlist' ? 'bookmark-outline' : 'grid-outline'}
+              title={tab === 'watchlist' ? 'Watchlist ist leer' : 'Noch nichts bewertet'}
+              hint={
+                tab === 'watchlist'
+                  ? 'Setz Filme und Serien über das Lesezeichen auf der Detailseite hierher.'
+                  : 'Deine bewerteten Filme und Serien erscheinen hier als Poster-Raster.'
+              }
             />
           ) : (
             <FlatList
-              data={state.items}
-              key={COLUMNS}
+              data={items}
+              key={`${COLUMNS}-${tab}`}
               numColumns={COLUMNS}
-              keyExtractor={(item) => String(item.entry.id)}
+              keyExtractor={(item) => item.key}
               columnWrapperStyle={styles.column}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <Link
                   href={{
                     pathname: '/title/[type]/[id]',
-                    params: { type: item.entry.mediaType, id: item.entry.tmdbId },
+                    params: { type: item.mediaType, id: item.tmdbId },
                   }}
                   asChild
                 >
                   <Pressable
-                    style={({ pressed }) => [styles.gridItem, pressed && styles.pressed]}
+                    style={({ pressed }) => [pressed && styles.pressed]}
                     accessibilityRole="link"
                     accessibilityLabel={item.title}
                   >
                     <View>
                       <Poster path={item.posterPath} width={posterWidth} />
-                      {item.entry.rating !== null && (
+                      {item.rating !== null && (
                         <View style={styles.gridRating}>
-                          <StarDisplay rating={item.entry.rating} size={11} />
+                          <StarDisplay rating={item.rating} size={11} />
                         </View>
                       )}
                     </View>
@@ -130,6 +181,28 @@ export default function ProfileScreen() {
         </>
       )}
     </Screen>
+  );
+}
+
+function TabButton({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.tab, active && styles.tabActive]}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+    >
+      <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -151,7 +224,7 @@ const styles = StyleSheet.create({
   stats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   stat: {
     alignItems: 'center',
@@ -166,12 +239,34 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     textTransform: 'uppercase',
   },
+  tabs: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  tab: {
+    flex: 1,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  tabActive: {
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  tabText: {
+    ...typography.bodyMedium,
+    color: colors.textSecondary,
+  },
+  tabTextActive: {
+    color: colors.text,
+  },
   column: {
     gap: spacing.sm,
     marginBottom: spacing.sm,
-  },
-  gridItem: {
-    borderRadius: 0,
   },
   pressed: {
     opacity: 0.7,

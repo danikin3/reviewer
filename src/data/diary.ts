@@ -114,6 +114,63 @@ export async function listRatedTitles(
   return rows.map(rowToEntryWithMedia);
 }
 
+/** Watchlist mit Titel und Poster — dieselbe Darstellung wie das Tagebuch. */
+export async function listWatchlistWithMedia(db: DbClient): Promise<
+  { mediaType: MediaType; tmdbId: number; title: string; posterPath: string | null; year: number | null }[]
+> {
+  const rows = await db.getAllAsync<{
+    media_type: MediaType;
+    tmdb_id: number;
+    cached_title: string | null;
+    cached_poster: string | null;
+    cached_release: string | null;
+  }>(
+    `SELECT w.media_type, w.tmdb_id,
+            m.title AS cached_title,
+            m.poster_path AS cached_poster,
+            m.release_date AS cached_release
+     FROM watchlist w
+     LEFT JOIN media_cache m ON m.media_type = w.media_type AND m.tmdb_id = w.tmdb_id
+     ORDER BY w.created_at DESC`,
+    []
+  );
+
+  return rows.map((row) => {
+    const year = row.cached_release ? Number(row.cached_release.slice(0, 4)) : null;
+    return {
+      mediaType: row.media_type,
+      tmdbId: row.tmdb_id,
+      title: row.cached_title ?? 'Unbekannter Titel',
+      posterPath: row.cached_poster,
+      year: year !== null && Number.isFinite(year) ? year : null,
+    };
+  });
+}
+
+/**
+ * Setzt einen Titel auf die Watchlist und cacht dabei seine Metadaten —
+ * sonst stünde die Watchlist später ohne Titel und Poster da.
+ */
+export async function addToWatchlistWithMedia(
+  db: DbClient,
+  details: MediaDetails
+): Promise<void> {
+  await upsertCachedMedia(db, {
+    mediaType: details.mediaType,
+    tmdbId: details.tmdbId,
+    payload: details,
+    title: details.title,
+    posterPath: details.posterPath,
+    releaseDate: details.year !== null ? `${details.year}-01-01` : null,
+    runtimeMinutes: details.runtimeMinutes,
+    genres: details.genres,
+  });
+  await db.runAsync(
+    'INSERT OR IGNORE INTO watchlist (media_type, tmdb_id) VALUES (?, ?)',
+    [details.mediaType, details.tmdbId]
+  );
+}
+
 export interface RatingInput {
   scope: EntryScope;
   seasonNumber: number | null;

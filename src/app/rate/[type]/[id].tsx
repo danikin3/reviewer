@@ -21,6 +21,7 @@ import { EmptyState } from '@/components/empty-state';
 import { MediaBadge } from '@/components/media-badge';
 import { Poster } from '@/components/poster';
 import { StarRating } from '@/components/star-rating';
+import { TagInput } from '@/components/tag-input';
 import { saveRating } from '@/data/diary';
 import { useDb } from '@/data/use-db';
 import { colors, radius, spacing, touchTarget, typography } from '@/theme/theme';
@@ -82,6 +83,7 @@ export default function RateScreen() {
   const [reviewText, setReviewText] = useState('');
   const [hasSpoilers, setHasSpoilers] = useState(false);
   const [isRewatch, setIsRewatch] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
   const [watchedAt, setWatchedAt] = useState(todayIso());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -124,7 +126,7 @@ export default function RateScreen() {
         isRewatch,
         status: 'watched',
         droppedReason: null,
-        tags: [],
+        tags,
       });
       router.back();
     } catch (error) {
@@ -266,6 +268,11 @@ export default function RateScreen() {
                 textAlignVertical="top"
                 accessibilityLabel="Review-Text"
               />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Tags</Text>
+              <TagInput tags={tags} onChange={setTags} />
             </View>
 
             <ToggleRow

@@ -15,6 +15,8 @@ import { MediaBadge } from '@/components/media-badge';
 import { Poster } from '@/components/poster';
 import { SeasonList } from '@/components/season-list';
 import { StarDisplay } from '@/components/star-display';
+import { addToWatchlistWithMedia } from '@/data/diary';
+import { isOnWatchlist, removeFromWatchlist } from '@/data/watchlist';
 import {
   getDroppedStatus,
   getSeasonRatings,
@@ -39,6 +41,7 @@ interface OwnData {
   seasonRatings: Map<number, Rating>;
   dropped: boolean;
   droppedReason: string | null;
+  onWatchlist: boolean;
 }
 
 const EMPTY_OWN: OwnData = {
@@ -47,6 +50,7 @@ const EMPTY_OWN: OwnData = {
   seasonRatings: new Map(),
   dropped: false,
   droppedReason: null,
+  onWatchlist: false,
 };
 
 /** „2 Std. 16 Min." statt „136 Min." — so liest es sich wie im Kinoprogramm. */
@@ -83,6 +87,8 @@ export default function TitleDetailScreen() {
 
   const loadOwn = useCallback(async () => {
     if (!Number.isFinite(tmdbId)) return;
+    const onWatchlist = await isOnWatchlist(db, mediaType, tmdbId);
+
     if (mediaType === 'movie') {
       const rows = await db.getAllAsync<{ rating: number }>(
         `SELECT rating FROM entries
@@ -90,7 +96,11 @@ export default function TitleDetailScreen() {
          ORDER BY created_at DESC LIMIT 1`,
         [tmdbId]
       );
-      setOwn({ ...EMPTY_OWN, ownRating: (rows[0]?.rating ?? null) as Rating | null });
+      setOwn({
+        ...EMPTY_OWN,
+        ownRating: (rows[0]?.rating ?? null) as Rating | null,
+        onWatchlist,
+      });
       return;
     }
 
@@ -106,6 +116,7 @@ export default function TitleDetailScreen() {
       seasonRatings: seasonRatings as Map<number, Rating>,
       dropped: droppedStatus.dropped,
       droppedReason: droppedStatus.reason,
+      onWatchlist,
     });
   }, [db, mediaType, tmdbId]);
 
@@ -127,6 +138,16 @@ export default function TitleDetailScreen() {
   async function confirmDropped(reason: string | null) {
     setDroppedSheetOpen(false);
     await markSeriesDropped(db, tmdbId, reason);
+    await loadOwn();
+  }
+
+  async function toggleWatchlist() {
+    if (state.kind !== 'loaded') return;
+    if (own.onWatchlist) {
+      await removeFromWatchlist(db, mediaType, tmdbId);
+    } else {
+      await addToWatchlistWithMedia(db, state.details);
+    }
     await loadOwn();
   }
 
@@ -166,6 +187,7 @@ export default function TitleDetailScreen() {
           bottomInset={insets.bottom}
           onReloadOwn={loadOwn}
           onOpenDroppedSheet={() => setDroppedSheetOpen(true)}
+          onToggleWatchlist={toggleWatchlist}
         />
       )}
 
@@ -184,12 +206,14 @@ function DetailContent({
   bottomInset,
   onReloadOwn,
   onOpenDroppedSheet,
+  onToggleWatchlist,
 }: {
   details: MediaDetails;
   own: OwnData;
   bottomInset: number;
   onReloadOwn: () => void;
   onOpenDroppedSheet: () => void;
+  onToggleWatchlist: () => void;
 }) {
   const backdrop = backdropUrl(details.backdropPath);
   const runtime = formatRuntime(details.runtimeMinutes);
@@ -290,15 +314,30 @@ function DetailContent({
             </Pressable>
           </Link>
 
+          <Pressable
+            onPress={onToggleWatchlist}
+            style={[styles.secondaryButton, own.onWatchlist && styles.secondaryButtonActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: own.onWatchlist }}
+            accessibilityLabel={
+              own.onWatchlist ? 'Von der Watchlist entfernen' : 'Auf die Watchlist setzen'
+            }
+          >
+            <Ionicons
+              name={own.onWatchlist ? 'bookmark' : 'bookmark-outline'}
+              size={16}
+              color={own.onWatchlist ? colors.accent : colors.textSecondary}
+            />
+          </Pressable>
+
           {isSeries && !own.dropped && (
             <Pressable
               onPress={onOpenDroppedSheet}
-              style={styles.dropButton}
+              style={styles.secondaryButton}
               accessibilityRole="button"
               accessibilityLabel="Serie als abgebrochen markieren"
             >
               <Ionicons name="stop-circle-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.dropText}>Abbrechen</Text>
             </Pressable>
           )}
         </View>
@@ -508,7 +547,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   rateButton: {
-    flex: 2,
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -521,20 +560,17 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.onAccent,
   },
-  dropButton: {
-    flex: 1,
-    flexDirection: 'row',
+  secondaryButton: {
+    width: touchTarget,
+    height: touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    height: touchTarget,
   },
-  dropText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+  secondaryButtonActive: {
+    borderColor: colors.accent,
   },
   chips: {
     flexDirection: 'row',
