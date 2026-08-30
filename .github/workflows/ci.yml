@@ -14,7 +14,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 24: die Tests nutzen das eingebaute node:sqlite,
+          # das es vor Node 22 nicht gibt und erst ab 24 ohne Flag
+          node-version: 24
           cache: npm
 
       - name: Abhängigkeiten installieren

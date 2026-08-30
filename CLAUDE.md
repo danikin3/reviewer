@@ -76,7 +76,13 @@ JDK 21 kommt aus dem Android Studio JBR — kein separates Java nötig.
 - Keystore ersetzen: neuen mit `keytool` erzeugen, Pfade in `~/.gradle/gradle.properties` anpassen. Nutzer müssen die App dann einmal deinstallieren.
 - ⚠️ `gradle.properties` muss **ohne BOM** gespeichert sein. Windows PowerShells `Set-Content -Encoding utf8` schreibt eins, und das BOM hängt sich an den ersten Property-Namen — Gradle findet ihn dann nicht und signiert stillschweigend mit dem Debug-Key. Prüfen mit `apksigner verify --print-certs`: steht dort `CN=Android Debug`, ist genau das passiert.
 
-Geplant (Schritt 10): Git-Tag `v*` → `.github/workflows/build-apk.yml` baut die APK und hängt sie ans GitHub Release (Keystore als base64-Secret); App prüft beim Start die GitHub-Releases-API auf neuere Versionen.
+### Automatischer Release
+
+Git-Tag `v*` → `.github/workflows/build-apk.yml` baut die signierte APK und hängt sie ans GitHub Release. `workflow_dispatch` erlaubt Testläufe ohne Tag (APK landet dann nur als Artefakt). Der Workflow prüft nach dem Build die Signatur und bricht ab, wenn sie auf den Debug-Key zurückgefallen ist.
+
+Gesetzte Repository-Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`. Noch offen: `TMDB_API_KEY` — fehlt es, entsteht eine APK ohne funktionierende Suche statt eines Build-Fehlers.
+
+`.github/workflows/ci.yml` prüft bei jedem Push Typen, Lint und Tests.
 
 ## Definition of Done pro Feature
 
@@ -85,8 +91,14 @@ Geplant (Schritt 10): Git-Tag `v*` → `.github/workflows/build-apk.yml` baut di
 3. Lade-, Fehler- und Leerzustände umgesetzt (kein Netz, leere Liste, kein Treffer, fehlender TMDB-Key)
 4. `CLAUDE.md`/`README.md` aktualisiert, falls Modell/Setup/Build sich geändert haben
 
+## Architektur-Muster, die eingehalten werden
+
+- **Ladezustände beim Render ableiten, nicht per `setState` im Effect.** Das Ergebnis trägt den Schlüssel des Titels bzw. der Suchanfrage, zu dem es gehört (`{ key, kind, ... }`), und `state` wird daraus berechnet. Verhindert Kaskaden-Renders und das Aufblitzen alter Daten beim Wechsel. ESLint erzwingt das über `react-hooks/set-state-in-effect`.
+- **Metadaten cachen, sobald sie da sind** — nicht erst beim Bewerten. Wer nur Episoden abhakt, hinterließe sonst eine Serie ohne Laufzeit und Genres, und die Statistik zählt sie falsch.
+- **Statistik-Regeln:** Genres, Regie und Cast zählen pro Titel einmal. Bei der Sehdauer schlagen abgehakte Folgen jede Annahme; nur ohne abgehakte Folgen zählt eine Gesamtbewertung als „ganze Serie gesehen".
+
 ## Offene Punkte
 
-- TMDB-Key: Platzhalter bis der Nutzer einen Account anlegt
-- Lizenz: MIT (Template-LICENSE beibehalten)
+- TMDB-Key: Nutzer hat noch keinen Account. Secret `TMDB_API_KEY` im Repo daher noch nicht gesetzt
+- APK ist ~110 MB, weil alle vier CPU-Architekturen enthalten sind. ABI-Splits würden auf ~30 MB drücken, kosten aber die „eine Datei für jedes Gerät"-Einfachheit
 - v2-Kandidaten: Social über Backend, eigene Listen (UI), Kompatibilitäts-Score, Staffel-Benachrichtigungen, Trakt-Import, Rating-Card, Deep Links

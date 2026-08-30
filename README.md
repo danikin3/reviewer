@@ -40,7 +40,7 @@ EXPO_PUBLIC_TMDB_API_KEY=dein_schluessel
 
 ## Entwicklung
 
-Voraussetzungen: Node 20+, npm. Für den nativen Android-Build zusätzlich JDK 17+ und das Android SDK (beides bringt Android Studio mit).
+Voraussetzungen: **Node 24+** (die Tests nutzen das eingebaute `node:sqlite`), npm. Für den nativen Android-Build zusätzlich JDK 17+ und das Android SDK (beides bringt Android Studio mit).
 
 ```bash
 git clone https://github.com/danikin3/reviewer.git
