@@ -1,0 +1,99 @@
+name: APK bauen und veröffentlichen
+
+# Ein Git-Tag wie v0.2.0 löst Build und Release aus.
+on:
+  push:
+    tags: ['v*']
+  # Für Testläufe ohne Tag
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Release-APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Gradle braucht ein JDK; 21 entspricht dem lokalen Android-Studio-JBR
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: TMDB-Schlüssel eintragen
+        # Fehlt das Secret, entsteht eine APK ohne Suche statt eines Build-Fehlers
+        run: echo "EXPO_PUBLIC_TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}" > .env
+
+      - name: Natives Projekt erzeugen
+        run: npx expo prebuild -p android --clean
+
+      - name: Keystore wiederherstellen
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret ANDROID_KEYSTORE_BASE64 fehlt — ohne Keystore waere die APK mit dem Debug-Key signiert und liesse sich nicht ueber eine bestehende Installation legen."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+      - name: Signierung konfigurieren
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          {
+            echo "REVIEWER_UPLOAD_STORE_FILE=$RUNNER_TEMP/release.keystore"
+            echo "REVIEWER_UPLOAD_KEY_ALIAS=$KEY_ALIAS"
+            echo "REVIEWER_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD"
+            echo "REVIEWER_UPLOAD_KEY_PASSWORD=$STORE_PASSWORD"
+          } >> android/gradle.properties
+
+      - name: APK bauen
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Signatur prüfen
+        # Faellt die Signierung still auf den Debug-Key zurueck, soll der Build
+        # scheitern statt eine unbrauchbare APK zu veroeffentlichen.
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
+          CERT=$("$APKSIGNER" verify --print-certs android/app/build/outputs/apk/release/app-release.apk)
+          echo "$CERT"
+          if echo "$CERT" | grep -q "CN=Android Debug"; then
+            echo "::error::APK wurde mit dem Debug-Key signiert."
+            exit 1
+          fi
+
+      - name: APK umbenennen
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ "$VERSION" = "$GITHUB_REF_NAME" ] && VERSION="dev-${GITHUB_SHA::7}"
+          cp android/app/build/outputs/apk/release/app-release.apk "Reviewer-v${VERSION}.apk"
+          echo "APK_NAME=Reviewer-v${VERSION}.apk" >> "$GITHUB_ENV"
+
+      - name: Als Artefakt sichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_NAME }}
+
+      - name: An das Release hängen
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.APK_NAME }}
+          generate_release_notes: true

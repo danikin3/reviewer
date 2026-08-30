@@ -40,7 +40,7 @@ Trending (`/trending/all/week`). Regelbasiertes Scoring (Kandidaten aus `/recomm
 Letterboxd-CSV-Import. Datenexport als JSON/CSV (Share-Sheet). „Alle Daten löschen". Settings: Region, Theme, TMDB-/JustWatch-Attribution, Version.
 **Test:** Echten Letterboxd-Export importieren; Export enthält alle Einträge; Löschen leert die DB.
 
-### 10. Build- und Release-Automatisierung
+### 10. Build- und Release-Automatisierung ✅
 `ci.yml` (tsc, ESLint, Tests je Push), `build-apk.yml` (Tag `v*` → Gradle-Build → APK ans GitHub Release, Keystore aus Secret), Update-Check beim Start gegen GitHub-Releases-API, README final (Screenshots, Installation, Attribution).
 **Test:** Tag pushen → Release mit APK erscheint; ältere Version zeigt Update-Hinweis.
 

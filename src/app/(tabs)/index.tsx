@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { DiaryCard } from '@/components/diary-card';
 import { EmptyState } from '@/components/empty-state';
 import { Screen } from '@/components/screen';
+import { UpdateBanner } from '@/components/update-banner';
 import { listDiary } from '@/data/diary';
 import { useDb } from '@/data/use-db';
 import { colors } from '@/theme/theme';
@@ -45,6 +46,8 @@ export default function HomeScreen() {
 
   return (
     <Screen title="Reviewer">
+      <UpdateBanner />
+
       {state.kind === 'loading' && (
         <View style={styles.center}>
           <ActivityIndicator color={colors.accent} />

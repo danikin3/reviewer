@@ -43,8 +43,20 @@ export default function SettingsScreen() {
   }, [db]);
 
   useEffect(() => {
-    reload();
-  }, [reload]);
+    let cancelled = false;
+    (async () => {
+      const [storedRegion, stored] = await Promise.all([
+        getSetting(db, 'region'),
+        countStoredData(db),
+      ]);
+      if (cancelled) return;
+      setRegion(storedRegion ?? 'DE');
+      setCounts(stored);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [db]);
 
   async function changeRegion(code: string) {
     setRegion(code);

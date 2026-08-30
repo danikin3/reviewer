@@ -37,6 +37,11 @@ type DetailState =
   | { kind: 'error'; message: string }
   | { kind: 'loaded'; details: MediaDetails };
 
+/** Geladenes Ergebnis samt Titel, zu dem es gehört. */
+type LoadResult =
+  | { key: string; kind: 'loaded'; details: MediaDetails }
+  | { key: string; kind: 'error'; message: string };
+
 /** Was die App selbst über den Titel weiß — aus der lokalen DB, nicht von TMDB. */
 interface OwnData {
   ownRating: Rating | null;
@@ -74,34 +79,25 @@ export default function TitleDetailScreen() {
   const mediaType: MediaType = params.type === 'tv' ? 'tv' : 'movie';
   const tmdbId = Number(params.id);
 
-  const [state, setState] = useState<DetailState>({ kind: 'loading' });
+  /**
+   * Das Ergebnis trägt den Titel, zu dem es gehört. Dadurch lässt sich der
+   * Ladezustand beim Render ableiten statt ihn per setState zu setzen — und
+   * beim Wechsel auf einen anderen Titel blitzen nie kurz dessen Vorgängerdaten auf.
+   */
+  const [result, setResult] = useState<LoadResult | null>(null);
   const [own, setOwn] = useState<OwnData>(EMPTY_OWN);
   const [droppedSheetOpen, setDroppedSheetOpen] = useState(false);
   const [availability, setAvailability] = useState<WatchAvailability | null>(null);
 
-  const loadDetails = useCallback(async () => {
-    setState({ kind: 'loading' });
-    try {
-      const details = await getDetails(mediaType, tmdbId);
-      setState({ kind: 'loaded', details });
+  const routeKey = `${mediaType}-${tmdbId}`;
 
-      // Metadaten sofort cachen, nicht erst beim Bewerten: von hier aus kann
-      // man Episoden abhaken, und ohne Cache haette die Statistik dann weder
-      // Laufzeit noch Genres der Serie.
-      await upsertCachedMedia(db, {
-        mediaType: details.mediaType,
-        tmdbId: details.tmdbId,
-        payload: details,
-        title: details.title,
-        posterPath: details.posterPath,
-        releaseDate: details.year !== null ? `${details.year}-01-01` : null,
-        runtimeMinutes: details.runtimeMinutes,
-        genres: details.genres,
-      });
-    } catch (error) {
-      setState({ kind: 'error', message: describeTmdbError(error) });
-    }
-  }, [db, mediaType, tmdbId]);
+  const state: DetailState = !Number.isFinite(tmdbId)
+    ? { kind: 'error', message: 'Ungültige Titel-ID.' }
+    : result === null || result.key !== routeKey
+      ? { kind: 'loading' }
+      : result.kind === 'loaded'
+        ? { kind: 'loaded', details: result.details }
+        : { kind: 'error', message: result.message };
 
   const loadOwn = useCallback(async () => {
     if (!Number.isFinite(tmdbId)) return;
@@ -139,12 +135,39 @@ export default function TitleDetailScreen() {
   }, [db, mediaType, tmdbId]);
 
   useEffect(() => {
-    if (Number.isFinite(tmdbId)) {
-      loadDetails();
-    } else {
-      setState({ kind: 'error', message: 'Ungültige Titel-ID.' });
-    }
-  }, [loadDetails, tmdbId]);
+    if (!Number.isFinite(tmdbId)) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const details = await getDetails(mediaType, tmdbId);
+        if (cancelled) return;
+        setResult({ key: routeKey, kind: 'loaded', details });
+
+        // Metadaten sofort cachen, nicht erst beim Bewerten: von hier aus kann
+        // man Episoden abhaken, und ohne Cache hätte die Statistik dann weder
+        // Laufzeit noch Genres der Serie.
+        await upsertCachedMedia(db, {
+          mediaType: details.mediaType,
+          tmdbId: details.tmdbId,
+          payload: details,
+          title: details.title,
+          posterPath: details.posterPath,
+          releaseDate: details.year !== null ? `${details.year}-01-01` : null,
+          runtimeMinutes: details.runtimeMinutes,
+          genres: details.genres,
+        });
+      } catch (error) {
+        if (!cancelled) {
+          setResult({ key: routeKey, kind: 'error', message: describeTmdbError(error) });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [db, mediaType, tmdbId, routeKey]);
 
   // Verfügbarkeit separat laden: fehlt sie, soll die Seite trotzdem stehen
   useEffect(() => {

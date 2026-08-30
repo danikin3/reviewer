@@ -16,6 +16,11 @@ type SearchState =
   | { kind: 'error'; message: string }
   | { kind: 'results'; hits: SearchHit[] };
 
+/** Suchergebnis samt der Anfrage, zu der es gehört. */
+type SearchResult =
+  | { query: string; kind: 'results'; hits: SearchHit[] }
+  | { query: string; kind: 'error'; message: string };
+
 type MediaSearchProps = {
   /** Ziel beim Antippen eines Treffers */
   target: 'detail' | 'rate';
@@ -33,31 +38,44 @@ type MediaSearchProps = {
 export function MediaSearch({ target, idleTitle, idleHint, renderIdle }: MediaSearchProps) {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounced(query, 350);
-  const [state, setState] = useState<SearchState>({ kind: 'idle' });
+  /** Trägt die Suchanfrage mit, zu der es gehört — siehe `state` unten. */
+  const [result, setResult] = useState<SearchResult | null>(null);
   const keyMissing = !hasApiKey();
 
+  const trimmedQuery = debouncedQuery.trim();
+
+  /**
+   * Der Anzeigezustand wird beim Render abgeleitet statt per setState gesetzt.
+   * Leeres Feld heißt "idle", eine Anfrage ohne passendes Ergebnis heißt
+   * "wird gesucht" — so bleiben beim Weitertippen nie alte Treffer stehen.
+   */
+  const state: SearchState =
+    trimmedQuery.length === 0
+      ? { kind: 'idle' }
+      : result === null || result.query !== trimmedQuery
+        ? { kind: 'searching' }
+        : result.kind === 'results'
+          ? { kind: 'results', hits: result.hits }
+          : { kind: 'error', message: result.message };
+
   useEffect(() => {
-    const trimmed = debouncedQuery.trim();
-    if (trimmed.length === 0) {
-      setState({ kind: 'idle' });
-      return;
-    }
-
+    if (trimmedQuery.length === 0) return;
     let cancelled = false;
-    setState({ kind: 'searching' });
 
-    searchMulti(trimmed)
+    searchMulti(trimmedQuery)
       .then((hits) => {
-        if (!cancelled) setState({ kind: 'results', hits });
+        if (!cancelled) setResult({ query: trimmedQuery, kind: 'results', hits });
       })
       .catch((error: unknown) => {
-        if (!cancelled) setState({ kind: 'error', message: describeTmdbError(error) });
+        if (!cancelled) {
+          setResult({ query: trimmedQuery, kind: 'error', message: describeTmdbError(error) });
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery]);
+  }, [trimmedQuery]);
 
   return (
     <>
@@ -112,7 +130,7 @@ export function MediaSearch({ target, idleTitle, idleHint, renderIdle }: MediaSe
         <EmptyState
           icon="search-outline"
           title="Nichts gefunden"
-          hint={`Für „${debouncedQuery.trim()}" gibt es bei TMDB keine Treffer.`}
+          hint={`Für „${trimmedQuery}" gibt es bei TMDB keine Treffer.`}
         />
       )}
 

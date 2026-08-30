@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -31,6 +31,11 @@ type LoadState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
   | { kind: 'loaded'; details: MediaDetails };
+
+/** Geladenes Ergebnis samt Titel, zu dem es gehört. */
+type LoadResult =
+  | { key: string; kind: 'loaded'; details: MediaDetails }
+  | { key: string; kind: 'error'; message: string };
 
 /** ISO-Datum (YYYY-MM-DD) in lokaler Zeit — nicht UTC, sonst kippt der Tag. */
 function isoDate(date: Date): string {
@@ -78,7 +83,8 @@ export default function RateScreen() {
   const episodeNumber = params.episode !== undefined ? Number(params.episode) : null;
 
   const [scope, setScope] = useState<EntryScope>(initialScope);
-  const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  /** Ergebnis samt Titel, zu dem es gehört — der Ladezustand wird daraus abgeleitet. */
+  const [result, setResult] = useState<LoadResult | null>(null);
   const [rating, setRating] = useState<Rating | null>(null);
   const [reviewText, setReviewText] = useState('');
   const [hasSpoilers, setHasSpoilers] = useState(false);
@@ -88,23 +94,34 @@ export default function RateScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setState({ kind: 'loading' });
-    try {
-      const details = await getDetails(mediaType, tmdbId);
-      setState({ kind: 'loaded', details });
-    } catch (error) {
-      setState({ kind: 'error', message: describeTmdbError(error) });
-    }
-  }, [mediaType, tmdbId]);
+  const routeKey = `${mediaType}-${tmdbId}`;
+
+  const state: LoadState = !Number.isFinite(tmdbId)
+    ? { kind: 'error', message: 'Ungültige Titel-ID.' }
+    : result === null || result.key !== routeKey
+      ? { kind: 'loading' }
+      : result.kind === 'loaded'
+        ? { kind: 'loaded', details: result.details }
+        : { kind: 'error', message: result.message };
 
   useEffect(() => {
-    if (Number.isFinite(tmdbId)) {
-      load();
-    } else {
-      setState({ kind: 'error', message: 'Ungültige Titel-ID.' });
-    }
-  }, [load, tmdbId]);
+    if (!Number.isFinite(tmdbId)) return;
+    let cancelled = false;
+
+    getDetails(mediaType, tmdbId)
+      .then((details) => {
+        if (!cancelled) setResult({ key: routeKey, kind: 'loaded', details });
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setResult({ key: routeKey, kind: 'error', message: describeTmdbError(error) });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mediaType, tmdbId, routeKey]);
 
   const dateValid = isValidIsoDate(watchedAt);
   const canSave =
