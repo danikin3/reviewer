@@ -24,7 +24,7 @@ import { StarRating } from '@/components/star-rating';
 import { saveRating } from '@/data/diary';
 import { useDb } from '@/data/use-db';
 import { colors, radius, spacing, touchTarget, typography } from '@/theme/theme';
-import type { MediaDetails, MediaType, Rating } from '@/types/media';
+import type { EntryScope, MediaDetails, MediaType, Rating } from '@/types/media';
 
 type LoadState =
   | { kind: 'loading' }
@@ -54,7 +54,13 @@ function isValidIsoDate(value: string): boolean {
 }
 
 export default function RateScreen() {
-  const params = useLocalSearchParams<{ type: string; id: string }>();
+  const params = useLocalSearchParams<{
+    type: string;
+    id: string;
+    scope?: string;
+    season?: string;
+    episode?: string;
+  }>();
   const router = useRouter();
   const db = useDb();
   const insets = useSafeAreaInsets();
@@ -62,6 +68,15 @@ export default function RateScreen() {
   const mediaType: MediaType = params.type === 'tv' ? 'tv' : 'movie';
   const tmdbId = Number(params.id);
 
+  // Filme kennen nur die Titel-Ebene; bei Serien kommt die Ebene aus der Route.
+  const initialScope: EntryScope =
+    mediaType === 'tv' && (params.scope === 'season' || params.scope === 'episode')
+      ? params.scope
+      : 'title';
+  const seasonNumber = params.season !== undefined ? Number(params.season) : null;
+  const episodeNumber = params.episode !== undefined ? Number(params.episode) : null;
+
+  const [scope, setScope] = useState<EntryScope>(initialScope);
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [rating, setRating] = useState<Rating | null>(null);
   const [reviewText, setReviewText] = useState('');
@@ -99,9 +114,9 @@ export default function RateScreen() {
     setSaveError(null);
     try {
       await saveRating(db, state.details, {
-        scope: 'title',
-        seasonNumber: null,
-        episodeNumber: null,
+        scope,
+        seasonNumber: scope === 'title' ? null : seasonNumber,
+        episodeNumber: scope === 'episode' ? episodeNumber : null,
         rating,
         reviewText: reviewText.trim() === '' ? null : reviewText.trim(),
         hasSpoilers,
@@ -176,6 +191,35 @@ export default function RateScreen() {
               </View>
             </View>
 
+            {/* Bei Serien ist die Ebene wählbar: ganze Serie, Staffel oder Episode.
+                Die Serien-Gesamtbewertung ist die primäre und deshalb vorausgewählt. */}
+            {state.details.mediaType === 'tv' && (
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Was bewertest du?</Text>
+                <View style={styles.scopeRow}>
+                  <ScopeChip
+                    label="Serie gesamt"
+                    active={scope === 'title'}
+                    onPress={() => setScope('title')}
+                  />
+                  {seasonNumber !== null && (
+                    <ScopeChip
+                      label={`Staffel ${seasonNumber}`}
+                      active={scope === 'season'}
+                      onPress={() => setScope('season')}
+                    />
+                  )}
+                  {seasonNumber !== null && episodeNumber !== null && (
+                    <ScopeChip
+                      label={`Folge ${seasonNumber}.${String(episodeNumber).padStart(2, '0')}`}
+                      active={scope === 'episode'}
+                      onPress={() => setScope('episode')}
+                    />
+                  )}
+                </View>
+              </View>
+            )}
+
             <View style={styles.starsBlock}>
               <StarRating value={rating} onChange={setRating} />
               <Text style={styles.ratingLabel}>
@@ -249,6 +293,28 @@ export default function RateScreen() {
         </KeyboardAvoidingView>
       )}
     </View>
+  );
+}
+
+function ScopeChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.scopeChip, active && styles.scopeChipActive]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+    >
+      <Text style={[styles.scopeChipText, active && styles.scopeChipTextActive]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -382,6 +448,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     alignItems: 'center',
+  },
+  scopeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  scopeChip: {
+    paddingHorizontal: spacing.lg,
+    height: touchTarget,
+    justifyContent: 'center',
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  scopeChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  scopeChipText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  scopeChipTextActive: {
+    color: colors.onAccent,
   },
   chip: {
     paddingHorizontal: spacing.lg,

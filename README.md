@@ -39,11 +39,23 @@ cp .env.example .env   # TMDB-Key eintragen
 npx expo start         # Dev-Server (Expo Go oder Web)
 ```
 
-Release-APK lokal bauen:
+Release-APK lokal bauen (Windows/PowerShell):
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+npx expo prebuild -p android --clean
+cd android; .\gradlew.bat assembleRelease
+```
+
+Die fertige APK liegt unter `android/app/build/outputs/apk/release/app-release.apk`.
+
+Die Release-Signierung trägt das Config-Plugin `plugins/with-release-signing.js` beim Prebuild ein; die Zugangsdaten kommen aus `~/.gradle/gradle.properties` und liegen nie im Repo. Ohne diese Properties baut Gradle mit dem Debug-Key weiter.
+
+Tests und Typecheck:
 
 ```bash
-npx expo prebuild -p android
-cd android && ./gradlew assembleRelease
+npm test && npm run typecheck
 ```
 
 ## Tech-Stack

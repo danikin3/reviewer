@@ -52,11 +52,30 @@ src/types/              Gemeinsame TS-Typen
 
 ## Build
 
-- Dev: `npx expo start` (Expo Go oder Web)
-- Release-APK lokal: `npx expo prebuild -p android` + `cd android && .\gradlew assembleRelease` (braucht JDK 17; Android Studio JBR nutzbar)
-- Release: Git-Tag `v*` → `.github/workflows/build-apk.yml` baut die APK und hängt sie ans GitHub Release
-- Keystore: lokal erzeugt, **nie im Repo**, als GitHub-Secret (base64) für den CI-Build
-- App prüft beim Start die GitHub-Releases-API auf neuere Version, dezenter Hinweis
+Dev: `npx expo start` (Expo Go oder Web). Web nutzt `output: "single"` — der statische Serializer kann den expo-sqlite-Web-Worker nicht auflösen.
+
+Release-APK lokal (Windows, PowerShell):
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+npx expo prebuild -p android --clean
+cd android; .\gradlew.bat assembleRelease
+# Ergebnis: android/app/build/outputs/apk/release/app-release.apk
+```
+
+JDK 21 kommt aus dem Android Studio JBR — kein separates Java nötig.
+
+### Signierung
+
+`android/` wird von `prebuild` neu erzeugt und ist gitignored, deshalb trägt das Config-Plugin `plugins/with-release-signing.js` die Release-Signierung bei jedem Prebuild ein. Zugangsdaten stehen **nie im Repo**, sondern in `~/.gradle/gradle.properties` (`REVIEWER_UPLOAD_*`). Fehlen sie, fällt der Build auf den Debug-Key zurück statt abzubrechen.
+
+- Keystore: `C:\Users\danie\.android-keystores\reviewer-release.keystore`, Alias `reviewer`
+- Passwort: `C:\Users\danie\.android-keystores\reviewer-password.txt`
+- ⚠️ **Beides sichern.** Ohne diesen Keystore kann keine Update-APK installiert werden, die eine bereits installierte ersetzt — Android verweigert den Austausch bei anderer Signatur.
+- Keystore ersetzen: neuen mit `keytool` erzeugen, Pfade in `~/.gradle/gradle.properties` anpassen. Nutzer müssen die App dann einmal deinstallieren.
+
+Geplant (Schritt 10): Git-Tag `v*` → `.github/workflows/build-apk.yml` baut die APK und hängt sie ans GitHub Release (Keystore als base64-Secret); App prüft beim Start die GitHub-Releases-API auf neuere Versionen.
 
 ## Definition of Done pro Feature
 

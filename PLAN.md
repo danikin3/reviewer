@@ -4,19 +4,19 @@ Architektur: alle Daten in SQLite auf dem Gerät, kein Backend, kein Login. Soci
 
 ## Schritte
 
-### 1. Scaffold, Theme, Tab-Navigation ✅ (in Arbeit)
+### 1. Scaffold, Theme, Tab-Navigation ✅
 Expo SDK 57 (TS strict), Expo Router mit 5 Tabs (Home/Tagebuch, Discover, Add, Statistik, Profil), `theme.ts` (Dark Theme Standard, Spacing-/Radius-/Typo-Skala), `.env.example`, README-Grundgerüst, GitHub-Repo `danikin3/reviewer`.
 **Test:** App startet (Web-Preview + Expo Go), Tab-Bar funktioniert, Dark Theme sichtbar.
 
-### 2. SQLite-Fundament + Repository-Layer
+### 2. SQLite-Fundament + Repository-Layer ✅
 `expo-sqlite`, Migrationssystem über `PRAGMA user_version`, Tabellen `entries`, `watchlist`, `media_cache`, `settings`. Repository-Layer `src/data/*` mit typisierten Funktionen — ab hier kein SQL außerhalb davon. Unit-Tests für die Migrationslogik.
 **Test:** App legt DB beim ersten Start an; Test-Insert überlebt App-Neustart.
 
-### 3. TMDB: Client, Suche, Titel-Detail
+### 3. TMDB: Client, Suche, Titel-Detail ✅
 Typisierter TMDB-Client (`.env`-Key, Platzhalter-tauglich: ohne Key sichtbarer Hinweis statt Crash), Cache über `media_cache`. Suche (`/search/multi`) mit Typ-Badge im Discover-Tab. Titel-Detail: Poster, Backdrop, Jahr, Laufzeit bzw. Staffeln/Episoden, Genres, Synopsis, Cast, Trailer-Link, TMDB-Score; bei Serien ausklappbare Staffel-/Episodenliste.
 **Test:** „Breaking Bad" und „Heat" suchen, Detailseiten korrekt; Flugmodus → Fehlerzustand; ohne Key → Hinweis.
 
-### 4. Bewerten → v0.1-Release-APK 🎯
+### 4. Bewerten → v0.1-Release-APK ✅ 🎯
 Add-Tab als Bottom-Sheet: suchen → bewerten. 5 Sterne in Halbschritten mit Haptik, Review-Text, Spoiler-Flag, „Gesehen am", Rewatch. Profil mit 3-Spalten-Poster-Grid der bewerteten Titel. Home zeigt die eigene Aktivität chronologisch.
 **Test:** Release-APK auf dem Handy: bewerten, Eintrag im Grid, überlebt Neustart. → Tag `v0.1.0`, erstes Release.
 
