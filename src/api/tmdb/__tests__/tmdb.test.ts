@@ -8,6 +8,17 @@ function stubFetchJson(body: unknown): ReturnType<typeof vi.fn> {
   return fetchMock;
 }
 
+function stubFetchByUrl(routes: { match: string; body: unknown }[]): ReturnType<typeof vi.fn> {
+  const fetchMock = vi.fn().mockImplementation((url: string) => {
+    const route = routes.find((r) => url.includes(r.match));
+    return Promise.resolve(
+      new Response(JSON.stringify(route?.body ?? {}), { status: route ? 200 : 404 })
+    );
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
 describe('TMDB-Normalisierung', () => {
   beforeEach(() => {
     process.env.EXPO_PUBLIC_TMDB_API_KEY = 'test-key';
@@ -149,6 +160,100 @@ describe('TMDB-Normalisierung', () => {
       expect(details.seasons).toHaveLength(1);
       expect(details.seasons[0].seasonNumber).toBe(1);
       expect(details.directors).toEqual(['Vince Gilligan']);
+    });
+
+    it('mittelt die Episodenlaufzeit aus der ersten Staffel, wenn TMDB keine nennt', async () => {
+      // TMDB liefert episode_run_time seit geraumer Zeit fuer fast alle Serien leer
+      const fetchMock = stubFetchByUrl([
+        {
+          match: '/tv/1396/season/1',
+          body: {
+            id: 1,
+            season_number: 1,
+            name: 'Staffel 1',
+            air_date: null,
+            poster_path: null,
+            episodes: [
+              { id: 1, episode_number: 1, season_number: 1, name: 'A', air_date: null, runtime: 59, still_path: null },
+              { id: 2, episode_number: 2, season_number: 1, name: 'B', air_date: null, runtime: 49, still_path: null },
+              { id: 3, episode_number: 3, season_number: 1, name: 'C', air_date: null, runtime: 48, still_path: null },
+            ],
+          },
+        },
+        {
+          match: '/tv/1396',
+          body: {
+            id: 1396,
+            name: 'Breaking Bad',
+            overview: null,
+            poster_path: null,
+            backdrop_path: null,
+            episode_run_time: [],
+            number_of_seasons: 5,
+            number_of_episodes: 62,
+            vote_average: 8.9,
+            genres: [],
+            seasons: [
+              { id: 0, season_number: 0, name: 'Specials', episode_count: 5, air_date: null, poster_path: null },
+              { id: 1, season_number: 1, name: 'Staffel 1', episode_count: 7, air_date: null, poster_path: null },
+            ],
+          },
+        },
+      ]);
+
+      const details = await getTvDetails(1396);
+
+      // (59 + 49 + 48) / 3 = 52
+      expect(details.runtimeMinutes).toBe(52);
+      // Specials werden fuer die Ableitung uebersprungen
+      expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/season/1'))).toBe(true);
+      expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/season/0'))).toBe(false);
+    });
+
+    it('bleibt ohne Laufzeit stehen, wenn auch die Staffel keine liefert', async () => {
+      stubFetchByUrl([
+        {
+          match: '/tv/1396/season/1',
+          body: { id: 1, season_number: 1, name: 'S1', air_date: null, poster_path: null, episodes: [] },
+        },
+        {
+          match: '/tv/1396',
+          body: {
+            id: 1396, name: 'X', overview: null, poster_path: null, backdrop_path: null,
+            episode_run_time: [], number_of_seasons: 1, number_of_episodes: 7,
+            vote_average: 0, genres: [],
+            seasons: [{ id: 1, season_number: 1, name: 'S1', episode_count: 7, air_date: null, poster_path: null }],
+          },
+        },
+      ]);
+
+      const details = await getTvDetails(1396);
+      expect(details.runtimeMinutes).toBeNull();
+    });
+
+    it('kippt nicht, wenn die Staffel-Anfrage scheitert', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation((url: string) =>
+          url.includes('/season/')
+            ? Promise.resolve(new Response('{}', { status: 404 }))
+            : Promise.resolve(
+                new Response(
+                  JSON.stringify({
+                    id: 1396, name: 'X', overview: null, poster_path: null, backdrop_path: null,
+                    episode_run_time: [], number_of_seasons: 1, number_of_episodes: 7,
+                    vote_average: 0, genres: [],
+                    seasons: [{ id: 1, season_number: 1, name: 'S1', episode_count: 7, air_date: null, poster_path: null }],
+                  }),
+                  { status: 200 }
+                )
+              )
+        )
+      );
+
+      const details = await getTvDetails(1396);
+      expect(details.runtimeMinutes).toBeNull();
+      expect(details.title).toBe('X');
     });
 
     it('setzt die Laufzeit auf null, wenn TMDB keine kennt', async () => {

@@ -142,16 +142,51 @@ export async function getMovieDetails(tmdbId: number): Promise<MediaDetails> {
   };
 }
 
+/**
+ * Durchschnittliche Episodenlaufzeit einer Serie.
+ *
+ * TMDB liefert `episode_run_time` inzwischen für praktisch alle Serien leer.
+ * Ohne diesen Wert waere die Sehdauer in der Statistik fuer jede Serie null,
+ * deshalb wird sie ersatzweise aus den Episoden der ersten regulaeren Staffel
+ * gemittelt. Das kostet eine zusaetzliche Anfrage und ist eine Naeherung fuer
+ * Serien mit stark schwankenden Folgenlaengen — aber deutlich naeher an der
+ * Wahrheit als gar kein Wert.
+ */
+async function resolveEpisodeRuntime(
+  tv: TmdbTvDetails,
+  seasons: SeasonSummary[]
+): Promise<number | null> {
+  const declared = tv.episode_run_time ?? [];
+  if (declared.length > 0) {
+    return Math.round(declared.reduce((sum, value) => sum + value, 0) / declared.length);
+  }
+
+  const firstSeason = seasons.find((season) => season.episodeCount > 0);
+  if (!firstSeason) return null;
+
+  try {
+    const season = await tmdbGet<TmdbSeasonDetails>(
+      `/tv/${tv.id}/season/${firstSeason.seasonNumber}`
+    );
+    const runtimes = season.episodes
+      .map((episode) => episode.runtime)
+      .filter((runtime): runtime is number => typeof runtime === 'number' && runtime > 0);
+
+    if (runtimes.length === 0) return null;
+    return Math.round(runtimes.reduce((sum, value) => sum + value, 0) / runtimes.length);
+  } catch {
+    // Die Laufzeit ist ein Extra — faellt sie aus, soll die Detailseite trotzdem stehen
+    return null;
+  }
+}
+
 export async function getTvDetails(tmdbId: number): Promise<MediaDetails> {
   const tv = await tmdbGet<TmdbTvDetails>(`/tv/${tmdbId}`, {
     append_to_response: 'credits,videos',
   });
 
-  const runtimes = tv.episode_run_time ?? [];
-  const averageRuntime =
-    runtimes.length > 0
-      ? Math.round(runtimes.reduce((sum, value) => sum + value, 0) / runtimes.length)
-      : null;
+  const seasons = (tv.seasons ?? []).filter((s) => s.season_number > 0).map(mapSeason);
+  const averageRuntime = await resolveEpisodeRuntime(tv, seasons);
 
   return {
     mediaType: 'tv',
@@ -169,7 +204,7 @@ export async function getTvDetails(tmdbId: number): Promise<MediaDetails> {
     seasonCount: tv.number_of_seasons,
     episodeCount: tv.number_of_episodes,
     // Staffel 0 ist bei TMDB "Specials" — nicht Teil der regulären Serie
-    seasons: (tv.seasons ?? []).filter((s) => s.season_number > 0).map(mapSeason),
+    seasons,
     directors: tv.credits?.crew?.filter((p) => p.job === 'Creator').map((p) => p.name) ?? [],
   };
 }
