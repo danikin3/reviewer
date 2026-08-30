@@ -74,6 +74,7 @@ JDK 21 kommt aus dem Android Studio JBR — kein separates Java nötig.
 - Passwort: `C:\Users\danie\.android-keystores\reviewer-password.txt`
 - ⚠️ **Beides sichern.** Ohne diesen Keystore kann keine Update-APK installiert werden, die eine bereits installierte ersetzt — Android verweigert den Austausch bei anderer Signatur.
 - Keystore ersetzen: neuen mit `keytool` erzeugen, Pfade in `~/.gradle/gradle.properties` anpassen. Nutzer müssen die App dann einmal deinstallieren.
+- ⚠️ `gradle.properties` muss **ohne BOM** gespeichert sein. Windows PowerShells `Set-Content -Encoding utf8` schreibt eins, und das BOM hängt sich an den ersten Property-Namen — Gradle findet ihn dann nicht und signiert stillschweigend mit dem Debug-Key. Prüfen mit `apksigner verify --print-certs`: steht dort `CN=Android Debug`, ist genau das passiert.
 
 Geplant (Schritt 10): Git-Tag `v*` → `.github/workflows/build-apk.yml` baut die APK und hängt sie ans GitHub Release (Keystore als base64-Secret); App prüft beim Start die GitHub-Releases-API auf neuere Versionen.
 

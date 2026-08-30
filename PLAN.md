@@ -20,11 +20,11 @@ Typisierter TMDB-Client (`.env`-Key, Platzhalter-tauglich: ohne Key sichtbarer H
 Add-Tab als Bottom-Sheet: suchen → bewerten. 5 Sterne in Halbschritten mit Haptik, Review-Text, Spoiler-Flag, „Gesehen am", Rewatch. Profil mit 3-Spalten-Poster-Grid der bewerteten Titel. Home zeigt die eigene Aktivität chronologisch.
 **Test:** Release-APK auf dem Handy: bewerten, Eintrag im Grid, überlebt Neustart. → Tag `v0.1.0`, erstes Release.
 
-### 5. Serien-Tiefe (der USP)
+### 5. Serien-Tiefe (der USP) ✅
 Bewertung auf drei Ebenen (Serie primär, Staffel/Episode optional). Episoden abhaken, „ganze Staffel abhaken", Fortschrittsanzeige. `dropped`-Status mit Grund, in der UI gleichwertig neben „gesehen".
 **Test:** Staffel abhaken, Episoden einzeln bewerten, Serie gesamt bewerten, andere Serie abbrechen — alles auf Detailseite und Profil sichtbar.
 
-### 6. Watchlist, Diary, Tags
+### 6. Watchlist, Diary, Tags ✅
 Watchlist (Filme + Serien gemischt). Diary: chronologisches Tagebuch nach `watched_at`. Freie Tags als Chips im Add-Sheet.
 **Test:** Titel auf Watchlist, verschwindet dort nach Bewertung; Diary korrekt sortiert.
 
