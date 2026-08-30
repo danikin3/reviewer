@@ -61,7 +61,11 @@ jobs:
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
+          # Fuehrender Umbruch ist Pflicht: die von prebuild erzeugte
+          # gradle.properties endet ohne Zeilenende, sonst klebt die erste
+          # Zeile an der letzten Property und macht deren Wert unbrauchbar.
           {
+            echo ""
             echo "REVIEWER_UPLOAD_STORE_FILE=$RUNNER_TEMP/release.keystore"
             echo "REVIEWER_UPLOAD_KEY_ALIAS=$KEY_ALIAS"
             echo "REVIEWER_UPLOAD_STORE_PASSWORD=$STORE_PASSWORD"
@@ -75,12 +79,7 @@ jobs:
 
       - name: APK bauen
         working-directory: android
-        shell: bash
-        run: |
-          set -o pipefail
-          ./gradlew assembleRelease --no-daemon --console=plain --info 2>&1 \
-            | grep -viE "^\s*(Resolving|Caching|Skipping|Up-to-date|Watching|file event|Putting|Stored|Loaded|Unpacking|Invalidating)" \
-            | tail -400
+        run: ./gradlew assembleRelease --no-daemon --console=plain
 
       - name: Signatur prüfen
         # Faellt die Signierung still auf den Debug-Key zurueck, soll der Build
