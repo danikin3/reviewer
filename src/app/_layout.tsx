@@ -11,11 +11,20 @@ import {
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { SQLiteProvider, type SQLiteDatabase } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { View } from 'react-native';
 
+import { ErrorBoundary } from '@/components/error-boundary';
+import { migrateDb } from '@/data/migrations';
 import { colors } from '@/theme/theme';
+
+const DATABASE_NAME = 'reviewer.db';
+
+async function onDatabaseInit(db: SQLiteDatabase): Promise<void> {
+  await migrateDb(db);
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,14 +51,20 @@ export default function RootLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      <ErrorBoundary>
+        <Suspense fallback={<View style={{ flex: 1, backgroundColor: colors.background }} />}>
+          <SQLiteProvider databaseName={DATABASE_NAME} onInit={onDatabaseInit} useSuspense>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
+              }}
+            >
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+          </SQLiteProvider>
+        </Suspense>
+      </ErrorBoundary>
     </View>
   );
 }

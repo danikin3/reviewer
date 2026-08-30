@@ -19,7 +19,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -32,7 +32,8 @@
           "imageWidth": 76
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
