@@ -28,7 +28,7 @@ Bewertung auf drei Ebenen (Serie primär, Staffel/Episode optional). Episoden ab
 Watchlist (Filme + Serien gemischt). Diary: chronologisches Tagebuch nach `watched_at`. Freie Tags als Chips im Add-Sheet.
 **Test:** Titel auf Watchlist, verschwindet dort nach Bewertung; Diary korrekt sortiert.
 
-### 7. Statistiken
+### 7. Statistiken ✅
 Aus `entries` berechnet: gesehene Filme/Serien/Episoden, Sehdauer (Std/Tage), Rating-Verteilung als Balkendiagramm, Top-Genres/-Regisseure/-Schauspieler, Aktivität pro Jahr/Monat, Jahres-Rückblick. Unit-Tests für die Berechnungen.
 **Test:** Zahlen stimmen gegen handgezählte Referenzdaten.
 

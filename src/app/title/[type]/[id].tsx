@@ -16,6 +16,7 @@ import { Poster } from '@/components/poster';
 import { SeasonList } from '@/components/season-list';
 import { StarDisplay } from '@/components/star-display';
 import { addToWatchlistWithMedia } from '@/data/diary';
+import { upsertCachedMedia } from '@/data/media-cache';
 import { isOnWatchlist, removeFromWatchlist } from '@/data/watchlist';
 import {
   getDroppedStatus,
@@ -80,10 +81,24 @@ export default function TitleDetailScreen() {
     try {
       const details = await getDetails(mediaType, tmdbId);
       setState({ kind: 'loaded', details });
+
+      // Metadaten sofort cachen, nicht erst beim Bewerten: von hier aus kann
+      // man Episoden abhaken, und ohne Cache haette die Statistik dann weder
+      // Laufzeit noch Genres der Serie.
+      await upsertCachedMedia(db, {
+        mediaType: details.mediaType,
+        tmdbId: details.tmdbId,
+        payload: details,
+        title: details.title,
+        posterPath: details.posterPath,
+        releaseDate: details.year !== null ? `${details.year}-01-01` : null,
+        runtimeMinutes: details.runtimeMinutes,
+        genres: details.genres,
+      });
     } catch (error) {
       setState({ kind: 'error', message: describeTmdbError(error) });
     }
-  }, [mediaType, tmdbId]);
+  }, [db, mediaType, tmdbId]);
 
   const loadOwn = useCallback(async () => {
     if (!Number.isFinite(tmdbId)) return;
