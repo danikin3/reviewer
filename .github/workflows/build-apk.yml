@@ -48,7 +48,13 @@ jobs:
             echo "::error::Secret ANDROID_KEYSTORE_BASE64 fehlt — ohne Keystore waere die APK mit dem Debug-Key signiert und liesse sich nicht ueber eine bestehende Installation legen."
             exit 1
           fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          # Zeilenumbrueche und ein etwaiges BOM entfernen: wird das Secret unter
+          # Windows gesetzt, schleicht sich sonst leicht eines ein und base64 bricht ab.
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '\r\n' | sed '1s/^\xEF\xBB\xBF//' | base64 -d > "$RUNNER_TEMP/release.keystore"
+          if [ ! -s "$RUNNER_TEMP/release.keystore" ]; then
+            echo "::error::Keystore konnte nicht dekodiert werden — ist ANDROID_KEYSTORE_BASE64 gueltiges base64?"
+            exit 1
+          fi
 
       - name: Signierung konfigurieren
         env:
