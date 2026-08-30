@@ -116,6 +116,26 @@ export interface MediaDetails {
   directors: string[];
 }
 
+export interface WatchProvider {
+  providerId: number;
+  name: string;
+  logoPath: string | null;
+}
+
+/**
+ * Streaming-Verfügbarkeit eines Titels in einer Region.
+ * Bewusst ohne Preise: TMDB/JustWatch liefern keine, und erfundene wären
+ * schlimmer als gar keine. `link` führt auf die TMDB-Watch-Seite.
+ */
+export interface WatchAvailability {
+  region: string;
+  link: string | null;
+  /** Im Abo enthalten (inklusive kostenlos und werbefinanziert) */
+  flatrate: WatchProvider[];
+  rent: WatchProvider[];
+  buy: WatchProvider[];
+}
+
 /** Gecachte TMDB-Metadaten. `payload` ist die volle API-Response. */
 export interface CachedMedia {
   mediaType: MediaType;

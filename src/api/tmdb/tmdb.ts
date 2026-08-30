@@ -3,10 +3,12 @@ import type {
   TmdbEpisode,
   TmdbMovieDetails,
   TmdbPaginated,
+  TmdbProvider,
   TmdbSearchResult,
   TmdbSeasonDetails,
   TmdbSeasonSummary,
   TmdbTvDetails,
+  TmdbWatchProviders,
 } from '@/api/tmdb/raw-types';
 import type {
   CastMember,
@@ -14,7 +16,12 @@ import type {
   MediaDetails,
   SearchHit,
   SeasonSummary,
+  WatchAvailability,
+  WatchProvider,
 } from '@/types/media';
+
+/** TMDB-Pfadsegment: nur Filme und Serien haben diese Endpunkte. */
+type MediaTypeParam = 'movie' | 'tv';
 
 function yearOf(date: string | null | undefined): number | null {
   if (!date) return null;
@@ -65,21 +72,12 @@ function mapEpisode(episode: TmdbEpisode): EpisodeSummary {
 }
 
 /**
- * Suche über Filme UND Serien in einem Ergebnis-Feed.
- * Personen werden herausgefiltert — die App bewertet keine Menschen.
+ * Bringt TMDB-Ergebnislisten in die einheitliche Trefferform.
+ * Personen fliegen raus — die App bewertet keine Menschen.
  */
-export async function searchMulti(query: string, page = 1): Promise<SearchHit[]> {
-  const trimmed = query.trim();
-  if (trimmed.length === 0) return [];
-
-  const data = await tmdbGet<TmdbPaginated<TmdbSearchResult>>('/search/multi', {
-    query: trimmed,
-    page,
-    include_adult: 'false',
-  });
-
+function mapSearchResults(results: TmdbSearchResult[]): SearchHit[] {
   const hits: SearchHit[] = [];
-  for (const result of data.results) {
+  for (const result of results) {
     if (result.media_type === 'movie') {
       hits.push({
         mediaType: 'movie',
@@ -103,6 +101,19 @@ export async function searchMulti(query: string, page = 1): Promise<SearchHit[]>
     }
   }
   return hits;
+}
+
+/** Suche über Filme UND Serien in einem gemeinsamen Ergebnis-Feed. */
+export async function searchMulti(query: string, page = 1): Promise<SearchHit[]> {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) return [];
+
+  const data = await tmdbGet<TmdbPaginated<TmdbSearchResult>>('/search/multi', {
+    query: trimmed,
+    page,
+    include_adult: 'false',
+  });
+  return mapSearchResults(data.results);
 }
 
 export async function getMovieDetails(tmdbId: number): Promise<MediaDetails> {
@@ -173,4 +184,67 @@ export async function getSeasonEpisodes(
 ): Promise<EpisodeSummary[]> {
   const season = await tmdbGet<TmdbSeasonDetails>(`/tv/${tmdbId}/season/${seasonNumber}`);
   return season.episodes.map(mapEpisode);
+}
+
+/** Was diese Woche läuft — Filme und Serien gemeinsam. */
+export async function getTrending(): Promise<SearchHit[]> {
+  const data = await tmdbGet<TmdbPaginated<TmdbSearchResult>>('/trending/all/week');
+  return mapSearchResults(data.results);
+}
+
+/**
+ * TMDB-Empfehlungen zu einem Titel. Die Genre-IDs der Ergebnisse werden
+ * nicht mitgeliefert, deshalb liefert diese Funktion nur die Basisdaten —
+ * die Genres kommen aus dem Cache des Ausgangstitels bzw. beim Öffnen.
+ */
+export async function getRecommendations(
+  mediaType: MediaTypeParam,
+  tmdbId: number
+): Promise<SearchHit[]> {
+  const data = await tmdbGet<TmdbPaginated<TmdbSearchResult>>(
+    `/${mediaType}/${tmdbId}/recommendations`
+  );
+  // Die Endpunkte liefern kein media_type-Feld — es ist implizit der des Titels
+  return mapSearchResults(
+    data.results.map((result) => ({ ...result, media_type: mediaType }) as TmdbSearchResult)
+  );
+}
+
+/**
+ * Streaming-Verfügbarkeit für eine Region. TMDB bezieht diese Daten von
+ * JustWatch und liefert **keine Preise und keine Deeplinks** in die
+ * Anbieter-Apps — nur den Link auf die TMDB-Watch-Seite. Die Nutzung
+ * verlangt sichtbare JustWatch-Attribution.
+ */
+export async function getWatchProviders(
+  mediaType: MediaTypeParam,
+  tmdbId: number,
+  region: string
+): Promise<WatchAvailability | null> {
+  const data = await tmdbGet<TmdbWatchProviders>(`/${mediaType}/${tmdbId}/watch/providers`);
+  const forRegion = data.results[region];
+  if (!forRegion) return null;
+
+  const map = (providers: TmdbProvider[] | undefined): WatchProvider[] =>
+    (providers ?? []).map((provider) => ({
+      providerId: provider.provider_id,
+      name: provider.provider_name,
+      logoPath: provider.logo_path,
+    }));
+
+  const availability: WatchAvailability = {
+    region,
+    link: forRegion.link ?? null,
+    // "free" und "ads" gehören inhaltlich zum Abo-Bereich: man zahlt nichts extra
+    flatrate: [...map(forRegion.flatrate), ...map(forRegion.free), ...map(forRegion.ads)],
+    rent: map(forRegion.rent),
+    buy: map(forRegion.buy),
+  };
+
+  const isEmpty =
+    availability.flatrate.length === 0 &&
+    availability.rent.length === 0 &&
+    availability.buy.length === 0;
+
+  return isEmpty ? null : availability;
 }

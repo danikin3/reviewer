@@ -32,7 +32,7 @@ Watchlist (Filme + Serien gemischt). Diary: chronologisches Tagebuch nach `watch
 Aus `entries` berechnet: gesehene Filme/Serien/Episoden, Sehdauer (Std/Tage), Rating-Verteilung als Balkendiagramm, Top-Genres/-Regisseure/-Schauspieler, Aktivität pro Jahr/Monat, Jahres-Rückblick. Unit-Tests für die Berechnungen.
 **Test:** Zahlen stimmen gegen handgezählte Referenzdaten.
 
-### 8. Discover: Trending, Empfehlungen, Streaming-Verfügbarkeit
+### 8. Discover: Trending, Empfehlungen, Streaming-Verfügbarkeit ✅
 Trending (`/trending/all/week`). Regelbasiertes Scoring (Kandidaten aus `/recommendations` der Top-20 eigenen Titel, Genre-/Keyword-Match, Gewichtung nach Rating, Abzug für Gesehenes/Watchlist) mit Unit-Tests und Begründung pro Vorschlag. Watch-Provider (Abo/Leihen/Kaufen, Region DE, in Settings umstellbar) hinter `StreamingProvider`-Interface, Link auf TMDB-Watch-Seite, JustWatch-Attribution.
 **Test:** Scoring-Tests grün; keine gesehenen Titel in Vorschlägen.
 

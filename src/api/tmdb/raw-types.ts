@@ -123,6 +123,28 @@ export interface TmdbEpisode {
   vote_average?: number;
 }
 
+export interface TmdbProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string | null;
+  display_priority?: number;
+}
+
+/** Verfügbarkeit je Region. `link` zeigt auf die TMDB-Watch-Seite. */
+export interface TmdbWatchRegion {
+  link?: string;
+  flatrate?: TmdbProvider[];
+  rent?: TmdbProvider[];
+  buy?: TmdbProvider[];
+  free?: TmdbProvider[];
+  ads?: TmdbProvider[];
+}
+
+export interface TmdbWatchProviders {
+  id: number;
+  results: Record<string, TmdbWatchRegion | undefined>;
+}
+
 export interface TmdbSeasonDetails {
   id: number;
   season_number: number;

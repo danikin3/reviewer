@@ -8,14 +8,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { describeTmdbError } from '@/api/tmdb/client';
 import { backdropUrl, profileUrl } from '@/api/tmdb/images';
-import { getDetails } from '@/api/tmdb/tmdb';
+import { getDetails, getWatchProviders } from '@/api/tmdb/tmdb';
 import { DroppedSheet } from '@/components/dropped-sheet';
 import { EmptyState } from '@/components/empty-state';
 import { MediaBadge } from '@/components/media-badge';
 import { Poster } from '@/components/poster';
 import { SeasonList } from '@/components/season-list';
 import { StarDisplay } from '@/components/star-display';
+import { WatchProviders } from '@/components/watch-providers';
 import { addToWatchlistWithMedia } from '@/data/diary';
+import { getSetting } from '@/data/settings';
 import { upsertCachedMedia } from '@/data/media-cache';
 import { isOnWatchlist, removeFromWatchlist } from '@/data/watchlist';
 import {
@@ -28,7 +30,7 @@ import {
 } from '@/data/series-progress';
 import { useDb } from '@/data/use-db';
 import { colors, radius, spacing, touchTarget, typography } from '@/theme/theme';
-import type { MediaDetails, MediaType, Rating } from '@/types/media';
+import type { MediaDetails, MediaType, Rating, WatchAvailability } from '@/types/media';
 
 type DetailState =
   | { kind: 'loading' }
@@ -75,6 +77,7 @@ export default function TitleDetailScreen() {
   const [state, setState] = useState<DetailState>({ kind: 'loading' });
   const [own, setOwn] = useState<OwnData>(EMPTY_OWN);
   const [droppedSheetOpen, setDroppedSheetOpen] = useState(false);
+  const [availability, setAvailability] = useState<WatchAvailability | null>(null);
 
   const loadDetails = useCallback(async () => {
     setState({ kind: 'loading' });
@@ -143,6 +146,26 @@ export default function TitleDetailScreen() {
     }
   }, [loadDetails, tmdbId]);
 
+  // Verfügbarkeit separat laden: fehlt sie, soll die Seite trotzdem stehen
+  useEffect(() => {
+    if (!Number.isFinite(tmdbId)) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const region = (await getSetting(db, 'region')) ?? 'DE';
+        const result = await getWatchProviders(mediaType, tmdbId, region);
+        if (!cancelled) setAvailability(result);
+      } catch {
+        if (!cancelled) setAvailability(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [db, mediaType, tmdbId]);
+
   // Nach dem Bewerten kehrt man hierher zurück — eigene Daten neu laden.
   useFocusEffect(
     useCallback(() => {
@@ -203,6 +226,7 @@ export default function TitleDetailScreen() {
           onReloadOwn={loadOwn}
           onOpenDroppedSheet={() => setDroppedSheetOpen(true)}
           onToggleWatchlist={toggleWatchlist}
+          availability={availability}
         />
       )}
 
@@ -222,6 +246,7 @@ function DetailContent({
   onReloadOwn,
   onOpenDroppedSheet,
   onToggleWatchlist,
+  availability,
 }: {
   details: MediaDetails;
   own: OwnData;
@@ -229,6 +254,7 @@ function DetailContent({
   onReloadOwn: () => void;
   onOpenDroppedSheet: () => void;
   onToggleWatchlist: () => void;
+  availability: WatchAvailability | null;
 }) {
   const backdrop = backdropUrl(details.backdropPath);
   const runtime = formatRuntime(details.runtimeMinutes);
@@ -387,6 +413,13 @@ function DetailContent({
             <Ionicons name="play" size={16} color={colors.text} />
             <Text style={styles.trailerText}>Trailer ansehen</Text>
           </Pressable>
+        )}
+
+        {availability && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Wo läuft es?</Text>
+            <WatchProviders availability={availability} />
+          </View>
         )}
 
         {isSeries && details.seasons.length > 0 && (

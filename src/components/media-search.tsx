@@ -21,10 +21,16 @@ type MediaSearchProps = {
   target: 'detail' | 'rate';
   idleTitle: string;
   idleHint: string;
+  /**
+   * Was bei leerem Suchfeld steht. Ohne diese Angabe erscheint ein
+   * Leerzustand aus `idleTitle`/`idleHint`; Discover schiebt hier
+   * stattdessen Trending und Empfehlungen hinein.
+   */
+  renderIdle?: () => React.ReactNode;
 };
 
 /** Suchfeld über Filme und Serien samt aller Lade-, Leer- und Fehlerzustände. */
-export function MediaSearch({ target, idleTitle, idleHint }: MediaSearchProps) {
+export function MediaSearch({ target, idleTitle, idleHint, renderIdle }: MediaSearchProps) {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounced(query, 350);
   const [state, setState] = useState<SearchState>({ kind: 'idle' });
@@ -78,7 +84,9 @@ export function MediaSearch({ target, idleTitle, idleHint }: MediaSearchProps) {
         )}
       </View>
 
-      {keyMissing && state.kind === 'idle' && (
+      {state.kind === 'idle' && renderIdle !== undefined && renderIdle()}
+
+      {state.kind === 'idle' && renderIdle === undefined && keyMissing && (
         <EmptyState
           icon="key-outline"
           title="Kein TMDB-Schlüssel hinterlegt"
@@ -86,7 +94,7 @@ export function MediaSearch({ target, idleTitle, idleHint }: MediaSearchProps) {
         />
       )}
 
-      {!keyMissing && state.kind === 'idle' && (
+      {state.kind === 'idle' && renderIdle === undefined && !keyMissing && (
         <EmptyState icon="search-outline" title={idleTitle} hint={idleHint} />
       )}
 
