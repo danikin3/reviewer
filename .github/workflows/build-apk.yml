@@ -30,6 +30,25 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      # Ohne Zwischenspeicher laedt jeder Lauf Gradle, das NDK und alle
+      # Abhaengigkeiten neu — das war der groesste Zeitfresser.
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: NDK zwischenspeichern
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk
+          key: ndk-${{ runner.os }}-27.1.12297006
+
+      - name: Nativen Build-Zwischenspeicher wiederverwenden
+        uses: actions/cache@v4
+        with:
+          path: |
+            android/.cxx
+            android/app/.cxx
+          key: cxx-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: cxx-${{ runner.os }}-
+
       - name: Abhängigkeiten installieren
         run: npm ci
 
@@ -92,6 +111,17 @@ jobs:
             echo "::error::APK wurde mit dem Debug-Key signiert."
             exit 1
           fi
+
+      - name: Architekturen prüfen
+        # Nur Geraete-Architekturen sollen enthalten sein; taucht wieder x86 auf,
+        # hat das Plugin nicht gegriffen und die APK waere unnoetig doppelt so gross.
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          LIBS=$(unzip -l "$APK" | grep -oE 'lib/[^/]+' | cut -d/ -f2 | sort -u | xargs)
+          echo "Enthaltene Architekturen: $LIBS"
+          case "$LIBS" in
+            *x86*) echo "::warning::x86 ist noch enthalten — Plugin hat nicht gegriffen." ;;
+          esac
 
       - name: APK umbenennen
         run: |
