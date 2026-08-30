@@ -38,6 +38,73 @@ export interface WatchlistItem {
   createdAt: string;
 }
 
+/**
+ * Normalisiertes Suchergebnis. Film und Serie haben bewusst dieselbe Form —
+ * der Unterschied steckt nur in `mediaType`, nirgends in der Struktur.
+ */
+export interface SearchHit {
+  mediaType: MediaType;
+  tmdbId: number;
+  title: string;
+  /** Erscheinungsjahr, falls TMDB eines kennt */
+  year: number | null;
+  posterPath: string | null;
+  overview: string | null;
+  tmdbScore: number | null;
+}
+
+export interface CastMember {
+  tmdbId: number;
+  name: string;
+  character: string | null;
+  profilePath: string | null;
+}
+
+export interface SeasonSummary {
+  seasonNumber: number;
+  name: string;
+  episodeCount: number;
+  airDate: string | null;
+  posterPath: string | null;
+}
+
+export interface EpisodeSummary {
+  seasonNumber: number;
+  episodeNumber: number;
+  name: string;
+  overview: string | null;
+  airDate: string | null;
+  runtimeMinutes: number | null;
+  stillPath: string | null;
+}
+
+/**
+ * Normalisierte Detailansicht. Serien-spezifische Felder stehen gleichrangig
+ * neben den Film-Feldern statt in einem Sonderzweig.
+ */
+export interface MediaDetails {
+  mediaType: MediaType;
+  tmdbId: number;
+  title: string;
+  year: number | null;
+  overview: string | null;
+  posterPath: string | null;
+  backdropPath: string | null;
+  genres: string[];
+  tmdbScore: number | null;
+  cast: CastMember[];
+  /** YouTube-Key des Trailers, falls vorhanden */
+  trailerKey: string | null;
+  /** Filme: Laufzeit. Serien: durchschnittliche Episodenlänge. */
+  runtimeMinutes: number | null;
+  /** Nur Serien */
+  seasonCount: number | null;
+  episodeCount: number | null;
+  seasons: SeasonSummary[];
+  /** Regie (Filme) bzw. Creator (Serien) */
+  directors: string[];
+}
+
 /** Gecachte TMDB-Metadaten. `payload` ist die volle API-Response. */
 export interface CachedMedia {
   mediaType: MediaType;

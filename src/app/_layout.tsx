@@ -61,6 +61,7 @@ export default function RootLayout() {
               }}
             >
               <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="title/[type]/[id]" options={{ animation: 'slide_from_right' }} />
             </Stack>
           </SQLiteProvider>
         </Suspense>
