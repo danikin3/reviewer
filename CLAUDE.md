@@ -74,7 +74,13 @@ JDK 21 kommt aus dem Android Studio JBR — kein separates Java nötig.
 - Passwort: `C:\Users\danie\.android-keystores\reviewer-password.txt`
 - ⚠️ **Beides sichern.** Ohne diesen Keystore kann keine Update-APK installiert werden, die eine bereits installierte ersetzt — Android verweigert den Austausch bei anderer Signatur.
 - Keystore ersetzen: neuen mit `keytool` erzeugen, Pfade in `~/.gradle/gradle.properties` anpassen. Nutzer müssen die App dann einmal deinstallieren.
-- ⚠️ `gradle.properties` muss **ohne BOM** gespeichert sein. Windows PowerShells `Set-Content -Encoding utf8` schreibt eins, und das BOM hängt sich an den ersten Property-Namen — Gradle findet ihn dann nicht und signiert stillschweigend mit dem Debug-Key. Prüfen mit `apksigner verify --print-certs`: steht dort `CN=Android Debug`, ist genau das passiert.
+### Zwei Fallen, die beide schon zugeschlagen haben
+
+1. **BOM in `gradle.properties`.** Windows PowerShells `Set-Content -Encoding utf8` schreibt eines, und es hängt sich an den ersten Property-Namen — Gradle findet ihn nicht und signiert stillschweigend mit dem Debug-Key. Prüfen mit `apksigner verify --print-certs`: steht dort `CN=Android Debug`, ist genau das passiert. Dasselbe gilt beim Pipen an `gh secret set`; dafür das Bash-Werkzeug nehmen.
+
+2. **Fehlender Zeilenumbruch beim Anhängen an `android/gradle.properties`.** Die von `prebuild` erzeugte Datei endet ohne Zeilenende. Wer ohne führendes `echo ""` anhängt, klebt seine erste Zeile an die letzte vorhandene Property und macht deren Wert unbrauchbar. Im CI führte das dazu, dass Expos Autolinking einen zusammengeklebten Parameter bekam und abbrach — Gradle meldete davon nur `command 'node' finished with non-zero exit value 1`.
+
+Wenn Gradle einen nichtssagenden `command 'node'`-Fehler meldet: mit `--info` laufen lassen, dann steht die vollständige Kommandozeile des Aufrufs im Log.
 
 ### Automatischer Release
 
