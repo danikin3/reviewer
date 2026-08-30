@@ -1,14 +1,18 @@
 {
-  "name": "reviewer-scaffold",
+  "name": "reviewer",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/space-grotesk": "^0.4.1",
     "@expo/ui": "~57.0.14",
+    "@expo/vector-icons": "^15.0.2",
     "expo": "~57.0.18",
     "expo-constants": "~57.0.16",
     "expo-device": "~57.0.1",
     "expo-font": "~57.0.2",
     "expo-glass-effect": "~57.0.1",
+    "expo-haptics": "~57.0.2",
     "expo-image": "~57.0.3",
     "expo-linking": "~57.0.8",
     "expo-router": "~57.0.17",
@@ -33,7 +37,6 @@
   },
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

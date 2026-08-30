@@ -1,56 +1,60 @@
-# Welcome to your Expo app 👋
+# Reviewer
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Filme **und** Serien bewerten, tracken und wiederfinden — in einer App, gleichwertig behandelt. Wie Letterboxd, nur dass Serien (inklusive Staffel- und Episoden-Bewertung) kein Anhängsel sind.
 
-## Get started
+**Lokal-first:** Alle Daten liegen in einer SQLite-Datenbank auf deinem Gerät. Kein Account, kein Login, keine Cloud, kein Tracking.
 
-1. Install dependencies
+> 🚧 In aktiver Entwicklung. Der aktuelle Stand ist in [PLAN.md](PLAN.md) dokumentiert.
 
-   ```bash
-   npm install
-   ```
+## Features (geplant für v1)
 
-2. Start the app
+- 🔍 Suche über Filme und Serien (TMDB)
+- ⭐ Bewertungen in Halbschritten (0,5–5 Sterne), Reviews mit Spoiler-Flag
+- 📺 Serien richtig: Bewertung pro Serie, Staffel und Episode; Episoden abhaken; Abgebrochen-Status mit Grund
+- 📋 Watchlist, Tagebuch (Diary), Tags
+- 📊 Statistiken: Sehdauer, Rating-Verteilung, Top-Genres/-Regisseure/-Schauspieler, Jahres-Rückblick
+- 🧭 Trending und regelbasierte Empfehlungen mit Begründung
+- 📥 Letterboxd-CSV-Import, Datenexport als JSON/CSV
+- 🎬 Streaming-Verfügbarkeit (Abo/Leihen/Kaufen) für Region DE
 
-   ```bash
-   npx expo start
-   ```
+## Installation (Android)
 
-In the output, you'll find options to open the app in a
+Es gibt keine Play-Store-Version. Die APK kommt aus den [GitHub Releases](../../releases):
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+1. Neueste `reviewer-vX.Y.Z.apk` aus dem Release herunterladen
+2. Auf dem Gerät „Installation aus unbekannten Quellen" für den Browser/Dateimanager erlauben
+3. APK öffnen und installieren
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Die App prüft beim Start selbst, ob ein neueres Release existiert.
 
-## Get a fresh project
+## Entwicklung
 
-When you're ready, run:
+Voraussetzungen: Node 20+, npm. Für den nativen Android-Build zusätzlich JDK 17 und das Android SDK.
 
 ```bash
-npm run reset-project
+git clone https://github.com/danikin3/reviewer.git
+cd reviewer
+npm install
+cp .env.example .env   # TMDB-Key eintragen
+npx expo start         # Dev-Server (Expo Go oder Web)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Release-APK lokal bauen:
 
-### Other setup steps
+```bash
+npx expo prebuild -p android
+cd android && ./gradlew assembleRelease
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Tech-Stack
 
-## Learn more
+Expo (React Native, TypeScript strict) · Expo Router · SQLite (`expo-sqlite`) · `expo-image`
 
-To learn more about developing your project with Expo, look at the following resources:
+## Attribution
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Film- und Serien-Metadaten von [TMDB](https://www.themoviedb.org/). Diese App verwendet die TMDB-API, wird aber nicht von TMDB unterstützt oder zertifiziert.
+- Streaming-Verfügbarkeitsdaten von [JustWatch](https://www.justwatch.com/) (via TMDB).
 
-## Join the community
+## Lizenz
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+[MIT](LICENSE)
